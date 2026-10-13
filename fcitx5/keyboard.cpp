@@ -193,7 +193,12 @@ private:
             if(!reply.commit.empty()&&ic->hasFocus())ic->commitString(reply.commit);
             fcitx::Text preedit(reply.preedit,fcitx::TextFormatFlags(fcitx::TextFormatFlag::Underline)|fcitx::TextFormatFlag::DontCommit);
             preedit.setCursor(std::max(0,std::min(reply.cursor,int(reply.preedit.size()))));
-            panel.setClientPreedit(preedit);panel.setPreedit(preedit);
+            panel.setClientPreedit(preedit);
+            // 单行紧凑候选栏（对齐官方）：客户端支持内联预编辑时，拼音由客户端在光标处
+            // 显示，面板只画候选行；不支持时回退到面板预编辑行（fcitx5 内核对
+            // CapabilityFlag::Preedit 一票否决，无自动回退，见 inputcontext.cpp）。
+            if(!ic->capabilityFlags().test(fcitx::CapabilityFlag::Preedit))
+                panel.setPreedit(preedit);
             if(!reply.candidates.empty()){
                 auto list=std::make_unique<fcitx::CommonCandidateList>();list->setPageSize(9);
                 list->setLabels({"1","2","3","4","5","6","7","8","9"});
