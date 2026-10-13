@@ -197,7 +197,9 @@ private:
             if(!reply.candidates.empty()){
                 auto list=std::make_unique<fcitx::CommonCandidateList>();list->setPageSize(9);
                 list->setLabels({"1","2","3","4","5","6","7","8","9"});
-                list->setLayoutHint(fcitx::CandidateLayoutHint::Vertical);
+                // 不设定 layoutHint：交给 Fcitx 全局设置决定横向/纵向
+                //（fcitx5-configtool → 附加组件 → 经典界面 → 「纵向候选词列表」）。
+                // 原实现硬编码 Vertical，会无视用户全局配置。
                 list->setCursorPositionAfterPaging(fcitx::CursorPositionAfterPaging::ResetToFirst);
                 for(size_t i=0;i<reply.candidates.size();i++)list->append(std::make_unique<Word>(this,int(i),generation_,reply.candidates[i]));
                 list->setGlobalCursorIndex(std::max(0,std::min(reply.selected,int(reply.candidates.size())-1)));
