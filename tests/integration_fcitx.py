@@ -12,6 +12,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'bridge'))
 from runtime import ROOT, STATE
 
 parser=argparse.ArgumentParser()
+parser.add_argument('--official-organizer',action='store_true',help='Exercise the separately prepared official cloud organizer')
 parser.add_argument('--mock-engine',action='store_true',help='Use a local fixture, without Wine or official components')
 args=parser.parse_args()
 
@@ -91,6 +92,7 @@ preedits=['','','']
 for index,field in enumerate(fields):
     field.connect('preedit-changed',lambda entry,text,i=index:preedits.__setitem__(i,text))
 for field in fields:box.pack_start(field,True,True,0)
+multiline=Gtk.TextView();multiline.set_size_request(450,140);box.pack_start(multiline,True,True,0)
 window.add(box);window.show_all()
 x=C.CDLL('libX11.so.6');xt=C.CDLL('libXtst.so.6')
 x.XOpenDisplay.argtypes=[C.c_char_p];x.XOpenDisplay.restype=C.c_void_p
@@ -181,7 +183,7 @@ def sequence():
     fields[2].grab_focus();yield 200
     check('password field cannot start dictation',not voice('Begin'))
     fields[0].grab_focus();yield 200
-    token=voice('Begin');check('control characters rejected',not voice('Commit',token,'line\nbreak'))
+    token=voice('Begin');check('control characters rejected',not voice('Commit',token,'line\tbreak'))
     check('invalid result also consumes ticket',not voice('Valid',token))
     token=voice('Begin');check('explicit cancel works',voice('Cancel',token))
     check('cancelled result rejected',not voice('Commit',token,'错误'))
@@ -190,6 +192,41 @@ def sequence():
     other.close_sync(None)
     yield 200
     check('owner disconnect clears preview without committing',preedits[0]=='' and fields[0].get_text()=='你好，语音测试')
+
+    # Structured dictation preserves paragraphs only in multiline clients.
+    fields[0].set_text('');fields[0].grab_focus();yield 200
+    token=voice('Begin');check('single-line structured commit accepted',voice('Commit',token,'一\n二'))
+    yield 100
+    check('single-line field flattens paragraph breaks',fields[0].get_text()=='一 二')
+    multiline.grab_focus();yield 200
+    token=voice('Begin');check('multiline structured commit accepted',voice('Commit',token,'1. 预算\n2. 人员'))
+    yield 100
+    buffer=multiline.get_buffer()
+    check('GTK3 without multiline hint receives flattened layout',buffer.get_text(buffer.get_start_iter(),buffer.get_end_iter(),True)=='1. 预算 2. 人员')
+    if args.official_organizer:
+        import daemon,asyncio
+        from audio import Session as RealSession
+        class NativeOrganizeSession(RealSession):
+            def __init__(self,callback,source):super().__init__(callback,source,organize=True)
+            async def run(self):
+                self.callback('recording',{})
+                while not self.stop.is_set() and not self.cancel.is_set():await asyncio.sleep(.05)
+                return {'text':'嗯那个帮我记一下明天的安排第一件事是下午三点开会先讨论预算然后再看人员安排第二件事是会后把会议纪要发给大家哦对了刚才说的三点不对改成四点会议室也改到二楼'}
+        daemon.Session=NativeOrganizeSession
+        coordinator=daemon.Bridge(quiet=True)
+        buffer.set_text('');multiline.grab_focus();yield 200
+        coordinator.command('start');yield 500;coordinator.command('stop')
+        yield from wait_for(lambda:coordinator.phase=='idle','official organization finishes',timeout=45)
+        organized=buffer.get_text(buffer.get_start_iter(),buffer.get_end_iter(),True)
+        check('official organized result delivered once', '1.' in organized and '2.' in organized and '预算' in organized and '会议纪要' in organized)
+        check('official organization reported committed',coordinator.last.get('outcome')=='committed' and coordinator.last.get('organize_status')=='organized')
+        retained=organized
+        coordinator.command('start');yield 300;coordinator.command('stop');yield 100
+        fields[1].grab_focus();yield 300
+        yield from wait_for(lambda:coordinator.phase=='idle','cancel official organizer',timeout=20)
+        check('focus cancellation drops official result and original fallback',buffer.get_text(buffer.get_start_iter(),buffer.get_end_iter(),True)==retained and fields[1].get_text()=='a')
+        # The following shortcut fixture owns the same D-Bus name; reuse this
+        # coordinator after replacing its Session factory rather than rebinding.
 
     # Exercise real keys -> native shortcut signal -> coordinator -> GTK commit,
     # substituting only the microphone/cloud session on this private bus.
@@ -209,7 +246,9 @@ def sequence():
                 return True
             GLib.timeout_add(20,poll)
     daemon.Session=FakeSession
-    bridge=daemon.Bridge(quiet=True)
+    bridge=coordinator if args.official_organizer else daemon.Bridge(quiet=True)
+    # Start the independent shortcut fixture at its original counter baseline.
+    bridge.generation=0;bridge.last=None
     fields[0].set_text('');fields[0].grab_focus();yield 200
     alt=0xffea;space=32
     key(alt);yield 400

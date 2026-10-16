@@ -42,3 +42,7 @@ Linux 语音快捷键及录音选项见[语音说明](voice.md)。
 恢复配置：关闭设置窗口，停止键盘服务，将对应备份的 `pre-apply.json`
 恢复到活动 prefix 中当前用户的 `AppData/Roaming/DoubaoIme/conf/config.json`，再启动服务。
 不要在运行中的引擎旁直接覆盖配置。
+
+## Linux 智能文字整理
+
+0.9.2.7 的“语音输入 → 智能文字整理”开关现可控制 Linux 听写的最终文字整理，关闭窗口后应用到下一次听写。需先运行 `python3 scripts/prepare_organize.py` 准备独立官方运行环境；失败时保留原始转写。Windows 的原文恢复快捷键尚未迁移，参见 [语音说明](voice.md)。其余 Windows 语音、麦克风和外观选项仍不映射到 Linux。

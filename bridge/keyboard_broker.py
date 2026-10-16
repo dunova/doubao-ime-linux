@@ -17,7 +17,7 @@ sock_path=keyboard_socket()
 os.umask(0o077)
 for hive in ('HKCU','HKLM'):
     subprocess.run([WINE,'reg','add',hive+r'\SOFTWARE\DoubaoIme','/v','VersionDir','/t','REG_SZ',
-                    '/d',r'C:\DoubaoIme\versions\v0.9.0.0','/f'],check=True,timeout=45,stdout=subprocess.DEVNULL)
+                    '/d',r'C:\DoubaoIme\versions\v0.9.2.7','/f'],check=True,timeout=45,stdout=subprocess.DEVNULL)
 log=(STATE/'keyboard-host.log').open('a')
 host=subprocess.Popen([WINE,str(ROOT/'build/keyboard-host.exe')],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log)
 selector=selectors.DefaultSelector();selector.register(host.stdout,selectors.EVENT_READ)

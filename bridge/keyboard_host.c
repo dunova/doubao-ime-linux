@@ -43,9 +43,9 @@ static void report(int result){
 void mainCRTStartup(void){
     input=GetStdHandle(STD_INPUT_HANDLE);output=GetStdHandle(STD_OUTPUT_HANDLE);
     SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);
-    SetCurrentDirectoryW(L"C:\\DoubaoIme\\versions\\v0.9.0.0");
-    SetDllDirectoryW(L"C:\\DoubaoIme\\versions\\v0.9.0.0");
-    HMODULE dll=LoadLibraryW(L"C:\\DoubaoIme\\versions\\v0.9.0.0\\rpc.dll");
+    SetCurrentDirectoryW(L"C:\\DoubaoIme\\versions\\v0.9.2.7");
+    SetDllDirectoryW(L"C:\\DoubaoIme\\versions\\v0.9.2.7");
+    HMODULE dll=LoadLibraryW(L"C:\\DoubaoIme\\versions\\v0.9.2.7\\rpc.dll");
     if(!dll)ExitProcess(2);
 #define LOAD(type,var,name) type var=(type)GetProcAddress(dll,name);if(!var)ExitProcess(3)
     LOAD(Ensure,ensure,"RpcPipe_EnsureServerRunning");

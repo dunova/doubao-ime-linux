@@ -48,7 +48,9 @@ class Bridge:
             Gio.DBusCallFlags.NONE, 1500, None).unpack()[0]
 
     def status(self):
-        return {'phase': self.phase, 'generation': self.generation, 'last': self.last}
+        from organize import enabled
+        return {'phase': self.phase, 'generation': self.generation, 'last': self.last,
+                'smart_text_organization': enabled()}
 
     def method(self, connection, sender, path, interface, method, parameters, invocation):
         try:
@@ -143,6 +145,8 @@ class Bridge:
                     self.cancel('preview-rejected')
             except GLib.Error:
                 self.cancel('fcitx-unavailable')
+        elif kind == 'organizing' and self.phase == 'processing':
+            self.notify('正在整理…Esc 可取消，请等待“已输入”提示')
         elif kind == 'recording' and self.phase == 'connecting':
             self.phase, self.since = 'recording', time.monotonic()
             self.notify('可以说话了；松开右 Alt 或再按右 Alt + 空格结束，Esc 取消'
@@ -167,10 +171,13 @@ class Bridge:
                 self.last = {'generation': generation, 'outcome': outcome,
                              'characters': len(text or '') if outcome == 'committed' else 0}
                 self.last.update({key: payload[key] for key in
-                    ('audio_seconds', 'peak', 'provider_events', 'error_category', 'provider_exit')
+                    ('audio_seconds', 'peak', 'provider_events', 'error_category', 'provider_exit',
+                     'organize_status', 'organize_error')
                     if key in payload})
                 print(json.dumps({'event': 'done', **self.last}), flush=True)
-                self.notify('已输入' if outcome == 'committed' else '本次未输入文字：'+outcome)
+                self.notify(('已输入（整理失败，保留原文）' if payload.get('organize_status') == 'fallback' else
+                             '已输入（已整理）' if payload.get('organized') else '已输入')
+                            if outcome == 'committed' else '本次未输入文字：'+outcome)
             self.session, self.token, self.phase = None, None, 'idle'
         return False
 
@@ -182,7 +189,7 @@ class Bridge:
                 valid = False
             if not valid:
                 self.cancel('focus-or-key-cancelled')
-        limit = {'connecting': 25, 'recording': 120, 'processing': 20}.get(self.phase)
+        limit = {'connecting': 25, 'recording': 120, 'processing': 60 if getattr(self.session, 'organize', False) else 20}.get(self.phase)
         if limit and time.monotonic()-self.since > limit:
             if self.phase == 'recording':
                 self.command('stop')

@@ -10,18 +10,18 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bridge'))
-from runtime import STATE, KEYBOARD_PREFIX, SETTINGS_PREFIX, executable, wine_env, wineserver
+from runtime import STATE, KEYBOARD_PREFIX, SETTINGS_PREFIX, ORGANIZE_PREFIX, executable, wine_env, wineserver
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--prefix', choices=['keyboard', 'settings', 'none'], default='keyboard')
+    parser.add_argument('--prefix', choices=['keyboard', 'settings', 'organize', 'none'], default='keyboard')
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     command = args.command[1:] if args.command[:1] == ['--'] else args.command
     if not command: parser.error('command required after --')
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
-    prefix = {'keyboard': KEYBOARD_PREFIX, 'settings': SETTINGS_PREFIX, 'none': None}[args.prefix]
+    prefix = {'keyboard': KEYBOARD_PREFIX, 'settings': SETTINGS_PREFIX, 'organize': ORGANIZE_PREFIX, 'none': None}[args.prefix]
     lock = None
     if prefix:
         lock = (STATE / (prefix.name + '.lock')).open('a')

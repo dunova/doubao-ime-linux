@@ -10,7 +10,7 @@ with an optional official settings window and optional voice input.
 
 **0.1.0-rc.1 · Source preview · Unofficial · Linux x86_64**
 
-The official **DoubaoIME 0.9.0.0** engine generates candidates; Fcitx handles the
+The official **DoubaoIME 0.9.2.7** engine generates candidates; Fcitx handles the
 preedit, candidate UI and text delivery. The bridge supports common Pinyin input,
 candidate selection, segmented conversion, backspace and cancellation. The
 official settings window can configure verified full Pinyin, double Pinyin,
@@ -53,7 +53,7 @@ cmake -S . -B build/fcitx
 cmake --build build/fcitx -j2
 python3 scripts/build_windows.py
 
-python3 scripts/prepare.py extract --installer /path/to/DoubaoIME_Installer_0.9.0.0_release.exe
+python3 scripts/prepare.py extract --installer /path/to/DoubaoIME_Installer_0.9.2.7_release.exe
 python3 scripts/prepare.py init
 ```
 
@@ -97,6 +97,7 @@ shortcuts. It refuses to overwrite existing files with the same names.
 - **Voice:** optional; configure an external adapter as described in the
   [voice notes](docs/voice.md) (Chinese). You can also use an independent Fcitx
   voice addon alongside this keyboard bridge.
+  Experimental official smart text organization is available after preparing its separate runtime; see the [voice notes](docs/voice.md).
   Optional Right Alt shortcuts support hold-to-talk and Right Alt+Space for
   hands-free recording; enable them in the Doubao dictation addon configuration.
 

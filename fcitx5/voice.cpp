@@ -119,9 +119,9 @@ class Dictation final : public fcitx::AddonInstance,
         return pending && pending->ticket == ticket &&
             pending->sender == currentMessage()->sender();
     }
-    static bool safeText(const std::string &text) {
+    static bool safeText(const std::string &text, bool multiline = false) {
         if (text.size() > 65536 || !fcitx::utf8::validate(text)) return false;
-        for (unsigned char byte : text) if (byte < 32 || byte == 127) return false;
+        for (unsigned char byte : text) if ((byte < 32 && !(multiline && byte == '\n')) || byte == 127) return false;
         return true;
     }
     void clearPreview(Delivery &delivery) {
@@ -248,10 +248,18 @@ public:
     }
     bool commit(const std::string &ticket, const std::string &text) {
         if (!owned(ticket)) return false;
-        bool accepted = valid(ticket) && !text.empty() && safeText(text);
+        bool accepted = valid(ticket) && !text.empty() && safeText(text, true);
         auto delivery = std::move(pending);
         clearPreview(*delivery);
-        if (accepted) delivery->field.get()->commitString(text);
+        if (accepted) {
+            auto *field = delivery->field.get();
+            std::string output = text;
+            if (!field->capabilityFlags().test(fcitx::CapabilityFlag::Multiline) ||
+                field->capabilityFlags().test(fcitx::CapabilityFlag::Terminal)) {
+                for (char &c : output) if (c == '\n') c = ' ';
+            }
+            field->commitString(output);
+        }
         return accepted;
     }
     FCITX_OBJECT_VTABLE_METHOD(begin, "Begin", "", "s");

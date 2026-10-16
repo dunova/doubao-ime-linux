@@ -15,7 +15,7 @@ for name, default in [('wine','wine'),('wineserver','wineserver'),('xvfb','Xvfb'
     except RuntimeError: checks[name] = False
 for name, path in [('fcitx_addon',ROOT/'build/fcitx/doubaoime.so'),
                    ('windows_host',ROOT/'build/keyboard-host.exe'),
-                   ('keyboard_engine',KEYBOARD_PREFIX/'drive_c/DoubaoIme/versions/v0.9.0.0/rpc.dll')]:
+                   ('keyboard_engine',KEYBOARD_PREFIX/'drive_c/DoubaoIme/versions/v0.9.2.7/rpc.dll')]:
     checks[name] = path.is_file()
 optional = {
     'settings_launcher': (ROOT/'build/settings-launcher.exe').is_file(),

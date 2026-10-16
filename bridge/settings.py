@@ -58,6 +58,21 @@ def merge_keyboard(before, after, current):
     return merged, changes
 
 
+def merge_supported_settings(before, after, current):
+    merged, changes = merge_keyboard(before, after, current)
+    old = before.get('voice', {}).get('smartTextEnabled', False)
+    requested = after.get('voice', {}).get('smartTextEnabled', False)
+    live = current.get('voice', {}).get('smartTextEnabled', False)
+    if type(requested) is not bool or type(old) is not bool:
+        raise ValueError('智能文字整理选项类型不正确')
+    if requested != old:
+        if live not in (old, requested):
+            raise ValueError('智能文字整理选项被其他程序修改')
+        merged.setdefault('voice', {})['smartTextEnabled'] = requested
+        changes['voice.smartTextEnabled'] = requested
+    return merged, changes
+
+
 def notify(message):
     if os.getenv('DOUBAO_SETTINGS_QUIET') == '1': return
     if not __import__('shutil').which('notify-send'): return
@@ -103,12 +118,12 @@ def main():
     UI_CONFIG = config_path(PREFIX)
     needed = [WINE, ROOT/'build/settings-launcher.exe', ROOT/'build/keyboard-host.exe',
               PREFIX/'drive_c/windows/mono/mono-2.0/lib/mono/4.5/mscorlib.dll',
-              PREFIX/'drive_c/DoubaoIme/versions/v0.9.0.0/DoubaoImeSettings.exe', LIVE_CONFIG]
+              PREFIX/'drive_c/DoubaoIme/versions/v0.9.2.7/DoubaoImeSettings.exe', LIVE_CONFIG]
     missing = [str(p) for p in needed if not p.exists()]
     if missing: raise RuntimeError('缺少设置组件：'+', '.join(missing))
     if args.check:
         print(json.dumps({'ready':True, 'live_config':str(LIVE_CONFIG),
-                          'ui':'official Wine Mono WPF', 'applies':'keyboard configuration',
+                          'ui':'official Wine Mono WPF', 'applies':'keyboard configuration and Linux smart text organization',
                           'limitations':['Windows voice shortcuts','Windows appearance/status bar',
                                          'automatic update','account/cloud sync unverified']}, ensure_ascii=False))
         return
@@ -119,6 +134,8 @@ def main():
     if UI_CONFIG.resolve() == LIVE_CONFIG.resolve():
         raise RuntimeError('设置副本不能直接链接到活动配置')
     before = read_config(LIVE_CONFIG)
+    from organize import enabled, set_enabled
+    before.setdefault('voice', {})['smartTextEnabled'] = enabled()
     seed = copy.deepcopy(before)
     seed.setdefault('app', {})['lastOpenedTab'] = 'keyboard'
     # This copy supplies the UI and cannot upgrade the pinned live engine.
@@ -139,7 +156,7 @@ def main():
                 if not selector.select(30) or b'"ready":true' not in host.stdout.readline():
                     raise RuntimeError('官方设置后台未能启动')
             result = subprocess.run([str(WINE), str(ROOT/'build/settings-launcher.exe')], env=env,
-                                    cwd=PREFIX/'drive_c/DoubaoIme/versions/v0.9.0.0', stdout=log, stderr=log)
+                                    cwd=PREFIX/'drive_c/DoubaoIme/versions/v0.9.2.7', stdout=log, stderr=log)
         finally:
             subprocess.run([wineserver(), '-k'], env=env,
                            stdout=log, stderr=log, timeout=10)
@@ -149,7 +166,7 @@ def main():
     if result.returncode:
         raise RuntimeError('设置程序异常退出，活动配置未修改；日志：'+str(directory))
     current = read_config(LIVE_CONFIG)
-    merged, changes = merge_keyboard(before, after, current)
+    merged, changes = merge_supported_settings(before, after, current)
     if not changes:
         notify('没有键盘配置变更。'); return
     was_active = owns_service() and subprocess.run(['systemctl','--user','is-active','--quiet',UNIT]).returncode == 0
@@ -162,7 +179,7 @@ def main():
     try:
         # Recheck after the engine has saved and stopped.
         current = read_config(LIVE_CONFIG)
-        merged, changes = merge_keyboard(before, after, current)
+        merged, changes = merge_supported_settings(before, after, current)
         write_config(directory/'pre-apply.json', current)
         write_config(LIVE_CONFIG, merged)
         fcntl.flock(engine_lock, fcntl.LOCK_UN)
@@ -180,8 +197,10 @@ def main():
         raise
     finally:
         engine_lock.close()
+    if 'voice.smartTextEnabled' in changes:
+        set_enabled(changes['voice.smartTextEnabled'])
     write_config(directory/'applied.json', merged)
-    notify('已保存 '+str(len(changes))+' 项键盘设置。双拼、五笔和繁简由官方引擎处理；Windows 前端专用选项仍有限制。')
+    notify('已保存 '+str(len(changes))+' 项设置。智能文字整理作用于下一次 Linux 听写；Windows 前端专用选项仍有限制。')
 
 
 if __name__ == '__main__':

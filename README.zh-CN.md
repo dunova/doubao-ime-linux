@@ -9,7 +9,7 @@
 
 **0.1.0-rc.1 · 源码预发布版 · 非官方项目 · Linux x86_64**
 
-将豆包 Windows 输入法 **0.9.0.0** 的键盘引擎接入 Fcitx 5。候选词由官方引擎生成，
+将豆包 Windows 输入法 **0.9.2.7** 的键盘引擎接入 Fcitx 5。候选词由官方引擎生成，
 预编辑、候选框和文字提交由 Fcitx 处理。支持常用拼音、选词、分段转换、退格与取消；
 官方设置窗口可用于配置已验证的全拼、双拼、五笔和繁简选项。
 
@@ -44,7 +44,7 @@ cmake -S . -B build/fcitx
 cmake --build build/fcitx -j2
 python3 scripts/build_windows.py
 
-python3 scripts/prepare.py extract --installer /path/to/DoubaoIME_Installer_0.9.0.0_release.exe
+python3 scripts/prepare.py extract --installer /path/to/DoubaoIME_Installer_0.9.2.7_release.exe
 python3 scripts/prepare.py init
 ```
 
@@ -130,3 +130,5 @@ CI 使用固定响应的模拟键盘引擎，**不代表官方豆包引擎或云
 
 推送与 `VERSION` 一致的 `v*` 标签，会先运行完整 CI，再自动生成 GitHub Release，
 附上源码包和 `SHA256SUMS`。`-rc` 标签标记为预发布。维护步骤见 [发布说明](docs/release.md)。
+
+Windows 0.9.2.7 的智能文字整理已可通过独立官方运行环境接入 Linux 听写，详见 [语音说明](docs/voice.md)。Windows 原文恢复快捷键尚未迁移。

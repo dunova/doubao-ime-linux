@@ -8,10 +8,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / 'config.local.json'
 OPTIONS = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
 STATE = Path(os.environ.get('DOUBAO_STATE_DIR', OPTIONS.get('state_dir', ROOT / 'work'))).expanduser().resolve()
-VERSION = '0.9.0.0'
+VERSION = '0.9.2.7'
 VERSION_DIR = rf'C:\DoubaoIme\versions\v{VERSION}'
 KEYBOARD_PREFIX = STATE / 'wineprefix'
 SETTINGS_PREFIX = STATE / 'settings-prefix'
+ORGANIZE_PREFIX = STATE / 'organize-prefix'
 
 
 def executable(key, default):

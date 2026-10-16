@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bridge'))
 from runtime import (ROOT, STATE, VERSION, VERSION_DIR, KEYBOARD_PREFIX, SETTINGS_PREFIX,
                      wine, executable)
 
-INSTALLER_SHA = '610b8bf696835b5c4bad654b87de8695dfa808bc57aa900bcc7603e06f427f7f'
-RPC_SHA = 'a3ead1a55850257bac01a878c899f42291a1f41bd2b834e0caa5c5b66a674e02'
+INSTALLER_SHA = 'd777027cc822a67dac04ba502616f6e6216a54c06681e21f8f45ef0a89cec5db'
+RPC_SHA = 'e3ee88527bf6bd38156e86b93413ca004a829809ad51f064a42db44814e9a5d5'
 MONO_SHA = 'df2dfc1665c2511882e7cabd56eafd0c0a3d94e5a7e86f969277f6c189d418d3'
 
 

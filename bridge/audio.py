@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import threading
+from organize import Organizer, OrganizeError, enabled as organize_enabled
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +42,8 @@ class Result:
 
 
 class Session:
-    def __init__(self, callback, source=None):
+    def __init__(self, callback, source=None, organize=None):
+        self.organize = organize_enabled() if organize is None else organize
         self.callback, self.source = callback, source
         self.stop = threading.Event()
         self.cancel = threading.Event()
@@ -51,10 +53,41 @@ class Session:
 
     def _thread(self):
         try:
-            outcome = asyncio.run(self.run())
+            outcome = asyncio.run(self.run_with_organizer())
         except Exception as error:
             outcome = {'error': type(error).__name__, 'text': None}
         self.callback('done', outcome)
+
+    async def run_with_organizer(self):
+        organizer = Organizer(self.cancel) if self.organize else None
+        organize_error = None
+        try:
+            if organizer:
+                try: await organizer.start()
+                except Exception as error:
+                    organize_error = str(error) if isinstance(error, OrganizeError) else type(error).__name__
+                    await organizer.close()
+                    organizer = None
+            result = await self.run()
+            if self.cancel.is_set():
+                result['text'] = None
+                return result
+            original = result.get('text')
+            if original and organizer:
+                self.callback('organizing', {})
+                try:
+                    result['text'] = await organizer.finish(original)
+                    result['organized'] = result['text'] != original
+                except Exception as error:
+                    result['text'] = None if self.cancel.is_set() else original
+                    organize_error = str(error) if isinstance(error, OrganizeError) else type(error).__name__
+            if self.organize:
+                result['organize_status'] = ('cancelled' if self.cancel.is_set() else
+                    'fallback' if organize_error else 'organized' if result.get('organized') else 'unchanged')
+                if organize_error: result['organize_error'] = organize_error
+            return result
+        finally:
+            if organizer: await organizer.close()
 
     async def run(self):
         provider = await asyncio.create_subprocess_exec(sys.executable, str(ROOT/'scripts/provider.py'),

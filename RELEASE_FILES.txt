@@ -55,3 +55,8 @@ tests/test_package.py
 tests/test_provider_network.py
 tests/test_settings_merge.py
 tests/test_voice_state.py
+bridge/organize.py
+bridge/organize_identity.c
+bridge/organize_transport.c
+scripts/prepare_organize.py
+tests/test_organize.py

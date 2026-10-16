@@ -22,7 +22,7 @@ class SettingsLauncher {
     }
     [STAThread] static int Main() {
         try {
-            string dir = @"C:\DoubaoIme\versions\v0.9.0.0";
+            string dir = @"C:\DoubaoIme\versions\v0.9.2.7";
             Environment.CurrentDirectory = dir;
             Environment.SetEnvironmentVariable("windir", @"C:\windows");
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) => {
