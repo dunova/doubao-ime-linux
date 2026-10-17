@@ -40,3 +40,32 @@ RVA `0xe8d3` 起用 `GetTickCount64() * 1000` 生成微秒时间；RVA `0xdaf0` 
 `enableEmoji=False` 时仍观察到 emoji 候选，不能宣称该选项在新版有效。
 
 新版额外导出 SmartUndo 等接口，目前未接入。智能文字整理的云端请求和原文恢复不属于现有键盘 RPC 桥接。
+
+
+## Local keyboard socket transport
+
+The Linux frontend connects to a same-user Unix stream socket owned by
+`keyboard_broker.py`. Each connection carries **one command and one response**:
+
+1. Open a new connection for each request.
+2. Send one ASCII command terminated by LF.
+3. Read the complete UTF-8 JSON response, terminated by LF.
+4. Close the connection. The broker also closes its side after the response.
+
+Do not pipeline commands or reuse a connection for a second request. Sending `K`
+and then `F` through the same connection is unsupported and can produce EOF,
+`BrokenPipeError`, or a reset. The existing frontend and integration client open
+one connection per request.
+
+Commands are `F` (focus in), `R` (focus out/reset), `K <packed-key> <release>`
+(`release` is 0 for key down and 1 for key up), and `S <candidate-index>`
+(zero-based selection). The response contains the engine result, preedit and
+commit text, candidates and selection metadata. Invalid commands or clients
+may be disconnected without a response.
+
+A socket file alone does not establish readiness: it may remain after an
+interrupted run, or exist before `listen()` succeeds. The keyboard integration
+test waits up to 45 seconds for a successful connection while checking that its
+broker process is alive. Startup timeout and early exit point to the broker log.
+A readiness probe does not unlink the socket; the broker already probes and
+removes refused stale endpoints before binding, and refuses an active endpoint.

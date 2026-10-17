@@ -63,3 +63,4 @@ tests/test_organize.py
 bridge/cleanup.py
 tests/test_cleanup.py
 tests/integration_cleanup.py
+tests/test_keyboard_ready.py

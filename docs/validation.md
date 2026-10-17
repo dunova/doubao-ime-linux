@@ -109,3 +109,25 @@ python3 scripts/check_package.py --rebuild
 - 单独启动整理进程的 9 个样例耗时约 16.2–17.2 秒，包含初始化；生产路径会与录音并行初始化，原有最终转写后 25 秒上限不变。
 
 上述结果验证固定样例和可观察到的内容保护，不构成对任意口述语义的完整保证；歧义修正保留原文。未进行本次真人麦克风回归。
+
+
+## 2026-10-17: Keyboard startup regression (issue #3)
+
+- The keyboard integration harness now waits for a successful Unix socket
+  connection, rather than treating an existing path as readiness. It reports a
+  bounded startup timeout or an early broker exit with the log location.
+- 62 unit tests passed, including stale/missing endpoints, delayed listeners,
+  startup timeout, early exit and permission-error handling.
+- The real 0.9.2.7 official keyboard engine passed all 11 RPC checks twice on
+  this machine: once with a deliberately abandoned test socket, then with a
+  clean endpoint. The keyboard service was stopped for exclusive prefix access
+  and restored after validation. No production endpoint was deleted.
+- The local socket's one-command/one-response-per-connection contract is now
+  documented in `docs/keyboard-abi.md`. No persistent-connection or Xvfb change
+  was needed.
+- The 66-file source manifest and reproducible source archive checks passed.
+
+The [community environment report](https://github.com/royess/doubao-ime-linux/issues/3)
+provides additional Arch/Omarchy and Hyprland installation observations and
+machine-specific measurements. This regression run does not independently
+reproduce those benchmarks or establish complete Hyprland/Wayland coverage.
