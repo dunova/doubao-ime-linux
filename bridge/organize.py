@@ -11,6 +11,7 @@ from pathlib import Path
 import signal
 import tempfile
 import sys
+from cleanup import resolve_corrections, preservation_error
 from runtime import ROOT, STATE, ORGANIZE_PREFIX, KEYBOARD_PREFIX, VERSION, config_path, wine
 
 MAX_TEXT = 65536
@@ -156,7 +157,8 @@ class Organizer:
     async def finish(self, text, timeout=25):
         if not safe_text(text): raise OrganizeError('unsafe-input')
         if self.cancel.is_set(): raise OrganizeError('cancelled')
-        body = json.dumps({'query':text,'scene':6,'stream':True,
+        corrected = resolve_corrections(text)
+        body = json.dumps({'query':corrected,'scene':6,'stream':True,
             'space_at_cn_en_nb':0,'space_at_newline':0},ensure_ascii=False,separators=(',',':'))+'\n'
         try:
             self.process.stdin.write(body.encode('utf-8'))
@@ -169,7 +171,9 @@ class Organizer:
             await self.reader
             if self.cancel.is_set(): raise OrganizeError('cancelled')
             if self.read_error or not self.ready: raise OrganizeError('invalid-native-output')
-            return parse_sse(bytes(self.raw), text, self.status)
+            result = parse_sse(bytes(self.raw), corrected, self.status)
+            if preservation_error(corrected, result): raise OrganizeError('meaning-check')
+            return result
         except (BrokenPipeError, ConnectionError): raise OrganizeError('native-exited') from None
 
     async def close(self):

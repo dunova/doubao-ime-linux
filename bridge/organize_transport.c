@@ -57,6 +57,16 @@ static void response(void *callback, void *request, void *info, void *buffer, un
             line[k++] = '\n'; line[k] = 0; emit(line);
         }
     }
+    // Keep reading until the HTTP stream finishes, even when the diagnostic
+    // client's business parser rejects an empty no_rewrite completed event.
+    // Python validates the captured SSE independently. Feed the diagnostic parser
+    // a nonempty whitespace heartbeat; it still owns buffer recycling and the
+    // next Cronet read, without interpreting/cancelling the real SSE events.
+    if (request == organize_request && count) {
+        char *data = ((void *(*)(void *))GetProcAddress(original, "Cronet_Buffer_GetData"))(buffer);
+        data[0] = '\n';
+        count = 1;
+    }
     read_original(callback, request, info, buffer, count);
 }
 __declspec(dllexport) void *Cronet_UrlRequestCallback_CreateWith(void *a, void *b, void *c, void *d, void *e, void *f) {

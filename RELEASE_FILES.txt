@@ -60,3 +60,6 @@ bridge/organize_identity.c
 bridge/organize_transport.c
 scripts/prepare_organize.py
 tests/test_organize.py
+bridge/cleanup.py
+tests/test_cleanup.py
+tests/integration_cleanup.py
