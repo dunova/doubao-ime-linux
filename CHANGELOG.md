@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Send original transcripts directly to official text organization by default.
+- Make the optional local rewrite and semantic-check layer configurable with `organize_local_cleanup` or `DOUBAO_ORGANIZE_LOCAL_CLEANUP`; expose it in voice status.
+- Add reproducible official-only versus local-rules comparison modes and document heuristic limitations.
+
 ## 0.1.0-rc.2 — 2026-10-17
 
 - Upgrade the supported official Windows engine to 0.9.2.7.

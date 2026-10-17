@@ -1,5 +1,7 @@
-"""Conservative handling of explicit spoken corrections before cloud cleanup.
+"""Optional local heuristics; disabled by default in official organization.
 
+Enable organize_local_cleanup to run these legacy rules and content checks.
+They can improve delayed corrections but can also distort valid wording.
 Only typed times, dates and quantities are resolved locally. Ambiguous references,
 quoted examples and hypothetical corrections stay literal. The cloud still does
 punctuation, filler removal and sentence organization; no extra model is used.

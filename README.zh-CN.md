@@ -135,3 +135,5 @@ CI 使用固定响应的模拟键盘引擎，**不代表官方豆包引擎或云
 附上源码包和 `SHA256SUMS`。`-rc` 标签标记为预发布。维护步骤见 [发布说明](docs/release.md)。
 
 Windows 0.9.2.7 的智能文字整理已可通过独立官方运行环境接入 Linux 听写，详见 [语音说明](docs/voice.md)。Windows 原文恢复快捷键尚未迁移。
+
+默认把原始转写直接交给官方整理。本地正则预改写和语义检查默认关闭；可在 `config.local.json` 设置 `"organize_local_cleanup": true` 并重启语音服务以启用，设为 `false` 则关闭本地层，官方整理仍可独立使用。

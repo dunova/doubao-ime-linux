@@ -140,3 +140,40 @@ contains 67 reviewed files; archive content, README links, SHA-256 and byte-for-
 rebuild checks pass. Tag publication reruns the reusable GCC/Clang CI before
 creating the release assets. No official components or private runtime files are
 included in the source archive.
+
+
+## 2026-10-17: Official-only versus local cleanup
+
+Twenty sequential requests to the same official runtime/service compared ten
+artificial transcripts, once per mode. No network/protocol failure or fallback
+occurred. Each mode satisfied nine of ten content expectations; the differences
+were substantive:
+
+| Input | Official only | Local rules + official |
+| --- | --- | --- |
+| A long passage revising the meeting from 3 to 4 | Updates the first time, but retains the trailing spoken correction | Removes the superseded time and trailing correction |
+| `周三提交，哦不，周四完成。` | `周四完成。` | `周四提交完成。` (incorrectly retains the abandoned predicate) |
+
+The other eight cases passed in both modes: Chinese/English time corrections,
+weekday, quantity, comparison, negation, emphasis and filler/stutter removal.
+These are single observations of a small sample set, not general model quality
+rates. Separate local checks also show that the heuristic guard rejects the
+reasonable wording change `会议不能取消。` → `会议不得取消。`.
+
+Consequently the local rewrite and semantic-check layer is retained as an
+optional experiment and disabled by default. Official-only mode sends the full
+unmodified final transcript and preserves protocol validation, bounded waiting,
+focus/cancellation guards and accepted-transcript fallback on processing errors.
+`organize_local_cleanup` in `config.local.json`, or the daemon environment
+`DOUBAO_ORGANIZE_LOCAL_CLEANUP`, controls the optional layer independently.
+
+65 unit tests passed, including original-payload forwarding, official-wording
+acceptance, opt-in compatibility and configuration/environment precedence. The
+comparison is reproducible with `python3 tests/integration_cleanup.py --mode
+compare`; its content assertions intentionally expose both known limitations and
+return nonzero when an expectation is unmet. Raw artificial-sample outputs are
+kept in ignored `work/cleanup-comparison/`, outside production logs and releases.
+
+The default official-only path also passed all 60 isolated Fcitx/GTK checks,
+including actual official organization, one-time commit and focus cancellation.
+The 67-file manifest and reproducible source archive checks pass.

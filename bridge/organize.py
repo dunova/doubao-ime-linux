@@ -12,7 +12,7 @@ import signal
 import tempfile
 import sys
 from cleanup import resolve_corrections, preservation_error
-from runtime import ROOT, STATE, ORGANIZE_PREFIX, KEYBOARD_PREFIX, VERSION, config_path, wine
+from runtime import ROOT, STATE, ORGANIZE_PREFIX, KEYBOARD_PREFIX, VERSION, OPTIONS, config_path, wine
 
 MAX_TEXT = 65536
 
@@ -39,6 +39,13 @@ def enabled():
         return value is True
     except (OSError, ValueError, RuntimeError):
         return False
+
+
+def local_cleanup_enabled():
+    """Optional local heuristics, independently of official organization."""
+    override = os.environ.get('DOUBAO_ORGANIZE_LOCAL_CLEANUP')
+    if override is not None: return override == '1'
+    return OPTIONS.get('organize_local_cleanup', False) is True
 
 
 def set_enabled(value):
@@ -114,8 +121,9 @@ def runtime_ready():
 
 
 class Organizer:
-    def __init__(self, cancel):
+    def __init__(self, cancel, local_cleanup=None):
         self.cancel = cancel
+        self.local_cleanup = local_cleanup_enabled() if local_cleanup is None else local_cleanup
         self.process = self.reader = None
         self.status = None
         self.raw = bytearray()
@@ -157,7 +165,7 @@ class Organizer:
     async def finish(self, text, timeout=25):
         if not safe_text(text): raise OrganizeError('unsafe-input')
         if self.cancel.is_set(): raise OrganizeError('cancelled')
-        corrected = resolve_corrections(text)
+        corrected = resolve_corrections(text) if self.local_cleanup else text
         body = json.dumps({'query':corrected,'scene':6,'stream':True,
             'space_at_cn_en_nb':0,'space_at_newline':0},ensure_ascii=False,separators=(',',':'))+'\n'
         try:
@@ -172,7 +180,7 @@ class Organizer:
             if self.cancel.is_set(): raise OrganizeError('cancelled')
             if self.read_error or not self.ready: raise OrganizeError('invalid-native-output')
             result = parse_sse(bytes(self.raw), corrected, self.status)
-            if preservation_error(corrected, result): raise OrganizeError('meaning-check')
+            if self.local_cleanup and preservation_error(corrected, result): raise OrganizeError('meaning-check')
             return result
         except (BrokenPipeError, ConnectionError): raise OrganizeError('native-exited') from None
 

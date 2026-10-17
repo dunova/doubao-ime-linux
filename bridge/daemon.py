@@ -48,9 +48,9 @@ class Bridge:
             Gio.DBusCallFlags.NONE, 1500, None).unpack()[0]
 
     def status(self):
-        from organize import enabled
+        from organize import enabled, local_cleanup_enabled
         return {'phase': self.phase, 'generation': self.generation, 'last': self.last,
-                'smart_text_organization': enabled()}
+                'smart_text_organization': enabled(), 'local_text_cleanup': local_cleanup_enabled()}
 
     def method(self, connection, sender, path, interface, method, parameters, invocation):
         try:

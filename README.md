@@ -103,6 +103,10 @@ shortcuts. It refuses to overwrite existing files with the same names.
   [voice notes](docs/voice.md) (Chinese). You can also use an independent Fcitx
   voice addon alongside this keyboard bridge.
   Experimental official smart text organization is available after preparing its separate runtime; see the [voice notes](docs/voice.md).
+  Original transcripts go directly to the official organizer by default. Set
+  `"organize_local_cleanup": true` in `config.local.json` to opt into the local
+  heuristic layer, then restart the voice service; `false` disables both local
+  rewriting and semantic checks without disabling official organization.
   Optional Right Alt shortcuts support hold-to-talk and Right Alt+Space for
   hands-free recording; enable them in the Doubao dictation addon configuration.
 

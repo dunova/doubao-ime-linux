@@ -72,7 +72,7 @@ class Pipeline(unittest.IsolatedAsyncioTestCase):
         class Input:
             def write(self,data):self.data=data
             async def drain(self):pass
-        o=Organizer(threading.Event());sink=Input();o.process=SimpleNamespace(stdin=sink)
+        o=Organizer(threading.Event(),local_cleanup=True);sink=Input();o.process=SimpleNamespace(stdin=sink)
         o.reader=asyncio.create_task(asyncio.sleep(0));await o.reader
         o.status=200;o.ready=True
         o.raw.extend(b'event:scene.delta\ndata:{"content":"","no_rewrite":true}\n\nevent:scene.completed\ndata:{"content":""}\n\nevent:done\ndata:[DONE]\n\n')
@@ -91,6 +91,7 @@ class Pipeline(unittest.IsolatedAsyncioTestCase):
             def write(self,data):pass
             async def drain(self):pass
         class UnsafeModel(Organizer):
+            def __init__(self,cancel):super().__init__(cancel,local_cleanup=True)
             async def start(self):
                 self.process=SimpleNamespace(stdin=Input());self.reader=asyncio.create_task(asyncio.sleep(0))
                 await self.reader;self.status=200;self.ready=True
@@ -104,6 +105,25 @@ class Pipeline(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['organize_error'],'meaning-check')
         self.assertEqual(result['organize_status'],'fallback')
 
+    async def test_official_only_sends_original_and_accepts_official_wording(self):
+        import asyncio,json,threading
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from organize import Organizer
+        class Input:
+            def write(self,data):self.data=data
+            async def drain(self):pass
+        o=Organizer(threading.Event(),local_cleanup=False);sink=Input();o.process=SimpleNamespace(stdin=sink)
+        o.reader=asyncio.create_task(asyncio.sleep(0));await o.reader
+        o.status=200;o.ready=True
+        source='周三提交，哦不，周四完成。会议不能取消。'
+        expected='周四完成。会议不得取消。'
+        payload=json.dumps({'content':expected},ensure_ascii=False)
+        o.raw.extend(('event:scene.completed\ndata:'+payload+'\n\nevent:done\ndata:[DONE]\n\n').encode())
+        with patch('organize.resolve_corrections',side_effect=AssertionError('local rewrite called')),patch('organize.preservation_error',side_effect=AssertionError('local guard called')):
+            self.assertEqual(await o.finish(source),expected)
+        self.assertEqual(json.loads(sink.data)['query'],source)
+
     async def test_literal_mode_never_runs_cleanup_or_cloud(self):
         from unittest.mock import patch
         from audio import Session
@@ -112,6 +132,27 @@ class Pipeline(unittest.IsolatedAsyncioTestCase):
         async def speech():return {'text':source}
         with patch('audio.Organizer') as factory,patch.object(s,'run',speech):result=await s.run_with_organizer()
         factory.assert_not_called();self.assertEqual(result['text'],source)
+
+
+class Configuration(unittest.TestCase):
+    def test_default_is_official_only(self):
+        import os
+        from unittest.mock import patch
+        from organize import local_cleanup_enabled
+        with patch.dict('organize.OPTIONS',{},clear=True),patch.dict(os.environ,{},clear=True):
+            self.assertFalse(local_cleanup_enabled())
+
+    def test_config_and_environment_control_local_rules_independently(self):
+        import os,threading
+        from unittest.mock import patch
+        from organize import local_cleanup_enabled,Organizer
+        with patch.dict('organize.OPTIONS',{'organize_local_cleanup':False},clear=True),patch.dict(os.environ,{},clear=True):
+            self.assertFalse(local_cleanup_enabled())
+            self.assertFalse(Organizer(threading.Event()).local_cleanup)
+            with patch.dict(os.environ,{'DOUBAO_ORGANIZE_LOCAL_CLEANUP':'1'}):
+                self.assertTrue(local_cleanup_enabled())
+        with patch.dict('organize.OPTIONS',{'organize_local_cleanup':True},clear=True),patch.dict(os.environ,{'DOUBAO_ORGANIZE_LOCAL_CLEANUP':'0'},clear=True):
+            self.assertFalse(local_cleanup_enabled())
 
 
 if __name__=='__main__':unittest.main()

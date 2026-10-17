@@ -220,9 +220,11 @@ def sequence():
         organized=buffer.get_text(buffer.get_start_iter(),buffer.get_end_iter(),True)
         check('official organized result delivered once', '1.' in organized and '2.' in organized and '预算' in organized and '会议纪要' in organized)
         check('official organization reported committed',coordinator.last.get('outcome')=='committed' and coordinator.last.get('organize_status')=='organized')
-        from cleanup import canonical
-        normalized=canonical(organized)
-        check('delayed spoken correction committed without superseded time', '4点' in normalized and '3点' not in normalized and '不对' not in normalized and '改成' not in normalized)
+        from organize import local_cleanup_enabled
+        if local_cleanup_enabled():
+            from cleanup import canonical
+            normalized=canonical(organized)
+            check('delayed spoken correction committed without superseded time', '4点' in normalized and '3点' not in normalized and '不对' not in normalized and '改成' not in normalized)
         retained=organized
         coordinator.command('start');yield 300;coordinator.command('stop');yield 100
         fields[1].grab_focus();yield 300
