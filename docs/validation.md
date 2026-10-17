@@ -131,3 +131,12 @@ The [community environment report](https://github.com/royess/doubao-ime-linux/is
 provides additional Arch/Omarchy and Hyprland installation observations and
 machine-specific measurements. This regression run does not independently
 reproduce those benchmarks or establish complete Hyprland/Wayland coverage.
+
+
+## 0.1.0-rc.2 source release preparation
+
+The release includes the validations recorded above. The release source manifest
+contains 67 reviewed files; archive content, README links, SHA-256 and byte-for-byte
+rebuild checks pass. Tag publication reruns the reusable GCC/Clang CI before
+creating the release assets. No official components or private runtime files are
+included in the source archive.

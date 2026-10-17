@@ -32,13 +32,13 @@ python3 scripts/package.py --check
 python3 scripts/package.py
 python3 scripts/check_package.py --rebuild
 
-git tag -a v0.1.0-rc.1 -m 'Source preview v0.1.0-rc.1'
-git push origin v0.1.0-rc.1
+git tag -a v0.1.0-rc.2 -m 'Source preview v0.1.0-rc.2'
+git push origin v0.1.0-rc.2
 ```
 
 随后在 [Release workflow](https://github.com/royess/doubao-ime-linux/actions/workflows/release.yml)
 查看测试和发布结果，在 [Releases](https://github.com/royess/doubao-ime-linux/releases) 下载附件。
-`docs/releases/0.1.0-rc.1.md` 是首个版本的中英文发布说明。
+`docs/releases/0.1.0-rc.2.md` 为本次英文发布说明；首版中英文说明保留在 `docs/releases/0.1.0-rc.1.md`。
 
 工作流使用 GitHub 提供的临时 `GITHUB_TOKEN`；只有发布 job 有 `contents: write` 权限，
 无需配置个人访问令牌。仓库需要允许 Actions 运行及该 job 申请的内容写入权限。

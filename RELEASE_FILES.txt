@@ -64,3 +64,4 @@ bridge/cleanup.py
 tests/test_cleanup.py
 tests/integration_cleanup.py
 tests/test_keyboard_ready.py
+docs/releases/0.1.0-rc.2.md

@@ -8,7 +8,7 @@
 An experimental Fcitx 5 bridge for the official Doubao Windows keyboard engine,
 with an optional official settings window and optional voice input.
 
-**0.1.0-rc.1 · Source preview · Unofficial · Linux x86_64**
+**0.1.0-rc.2 · Source preview · Unofficial · Linux x86_64**
 
 The official **DoubaoIME 0.9.2.7** engine generates candidates; Fcitx handles the
 preedit, candidate UI and text delivery. The bridge supports common Pinyin input,
@@ -17,8 +17,9 @@ official settings window can configure verified full Pinyin, double Pinyin,
 Wubi and simplified/traditional Chinese options.
 
 This experiment targets a fixed engine version. **It is not a complete Linux
-port of the Windows input method.** Windows voice and appearance settings,
-account synchronization and some shortcuts are not connected. See the
+port of the Windows input method.** Windows appearance settings, account synchronization and some shortcuts
+are not connected. Smart text organization has experimental support through
+a separate official runtime; Windows smart undo remains unsupported. See the
 [settings limitations](docs/settings.md) for details (Chinese).
 
 ```text
@@ -26,8 +27,12 @@ Keys → native Fcitx addon → local socket → Wine RPC host → official Doub
               ← preedit, candidates and committed text ←
 
 Optional voice: Linux recording → external ASR adapter → Doubao speech service
-                                                     → Fcitx focus checks → text
+                                → optional official text organization
+                                → Fcitx focus checks → text
 ```
+
+[Changes in this release](docs/releases/0.1.0-rc.2.md): engine upgrade, live
+dictation previews, smart text organization and input reliability fixes.
 
 ## Requirements
 

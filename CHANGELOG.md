@@ -1,10 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-rc.2 — 2026-10-17
 
-- Distinct blue-and-white 豆 tray icon and matching settings launcher icon.
-- Optional Right Alt push-to-talk and Right Alt+Space hands-free dictation in Fcitx.
-- Bounded audio buffering preserves speech recorded before the ASR connection is ready.
+- Upgrade the supported official Windows engine to 0.9.2.7.
+- Add live dictation previews, Right Alt hold-to-talk and Right Alt+Space hands-free input.
+- Add optional official smart text organization in a separate Wine runtime, with explicit spoken-correction handling, protected-content checks and accepted-transcript fallback (#2).
+- Preserve speech recorded before the ASR connection is ready; add opt-in IPv4 voice connections and diagnostics.
+- Fix candidate paging, add a settings tray action and distinct tray/launcher icons.
+- Respect the Fcitx UI's candidate-layout preference (#4, thanks @dunova).
+- Wait for a live keyboard test socket and document the one-request connection contract (#3).
+- Expand local and CI validation, including cancellation, focus protections and reproducible source packaging.
+
+Experimental source prerelease. Official components and the external ASR adapter
+must be supplied separately. Windows smart undo and complete settings/account
+synchronization parity remain unsupported.
 
 ## 0.1.0-rc.1
 
