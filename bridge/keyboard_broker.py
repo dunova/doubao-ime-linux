@@ -53,21 +53,28 @@ DEFAULT_PHRASES = {
     'tyro': '脱亚入欧',
     'tuyarugou': '涂鸦入钩',
 }
+_cached_phrases = dict(DEFAULT_PHRASES)
+_last_phrase_mtime = 0
 
 def load_phrases():
-    phrases = dict(DEFAULT_PHRASES)
+    global _cached_phrases, _last_phrase_mtime
     if CUSTOM_PHRASE_PATH.is_file():
         try:
-            for line in CUSTOM_PHRASE_PATH.read_text(encoding='utf-8').splitlines():
-                line = line.strip()
-                if not line or line.startswith('#'): continue
-                parts = line.split(maxsplit=1)
-                if len(parts) == 2:
-                    py = parts[0].replace("'", "").replace(" ", "").lower()
-                    phrases[py] = parts[1].strip()
+            mtime = CUSTOM_PHRASE_PATH.stat().st_mtime
+            if mtime != _last_phrase_mtime:
+                phrases = dict(DEFAULT_PHRASES)
+                for line in CUSTOM_PHRASE_PATH.read_text(encoding='utf-8').splitlines():
+                    line = line.strip()
+                    if not line or line.startswith('#'): continue
+                    parts = line.split(maxsplit=1)
+                    if len(parts) == 2:
+                        py = parts[0].replace("'", "").replace(" ", "").lower()
+                        phrases[py] = parts[1].strip()
+                _cached_phrases = phrases
+                _last_phrase_mtime = mtime
         except Exception:
             pass
-    return phrases
+    return _cached_phrases
 
 current_injected_phrase = None
 

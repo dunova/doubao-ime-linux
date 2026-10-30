@@ -114,42 +114,107 @@ public:
         transact(ic,"S "+std::to_string(index));
     }
     void keyEvent(const fcitx::InputMethodEntry &,fcitx::KeyEvent &event)override {
-        // Paging is handled locally. Consume its matching release as well:
-        // sending it to the engine would rebuild the list at the first page.
-        // Track physical keys so changing Shift before release is harmless.
         auto keycode=event.rawKey().code();
-        if(event.isRelease()){
-            if(pagingKeys_.erase(keycode)){event.filterAndAccept();return;}
-        }else pagingKeys_.erase(keycode);
         auto *ic=event.inputContext();
         if(sensitive(ic))return;
+
+        // 1. Release 事件严格对称闭环处理：
+        // 若此按键的按下事件（KeyDown）此前被输入法消费，则释放事件必须无条件由输入法消费闭环，
+        // 绝不能漏放给客户端应用，防止客户端应用丢失 Release 从而陷入物理 Auto-Repeat 连击狂删。
+        if(event.isRelease()){
+            if(consumedKeys_.erase(keycode)){
+                event.filterAndAccept();
+                auto sym=event.rawKey().sym();
+                unsigned vk=symToVk(sym,event.rawKey());
+                if(vk){try{request("K "+std::to_string(vk)+" 1");}catch(...){}}
+                return;
+            }
+            // 若此按键此前未被消费（已放行给应用），则 Release 必须原样放行给应用
+            return;
+        }
+
+        // 2. 修饰快捷键组合直通：
         if(event.key().states().testAny(fcitx::KeyStates(fcitx::KeyState::Ctrl)|fcitx::KeyState::Alt|fcitx::KeyState::Super|fcitx::KeyState::Super2)){
-            if(!event.isRelease()&&!event.key().isModifier()&&target_.get()==ic){try{request("R");}catch(...){}clear(ic);target_.unwatch();}
+            if(!event.key().isModifier()&&target_.get()==ic){try{request("R");}catch(...){}clear(ic);target_.unwatch();}
+            consumedKeys_.erase(keycode);
             return;
         }
         if(target_.get()!=ic){target_=ic->watch();transact(ic,"F");if(target_.get()!=ic)return;}
-        // Normalized Fcitx keys fold Shift+A to a; the engine needs the actual
-        // character after layout conversion, including case and shifted symbols.
-        auto sym=event.rawKey().sym();auto unicode=fcitx::Key::keySymToUnicode(sym);
+
+        auto sym=event.rawKey().sym();
+        auto unicode=fcitx::Key::keySymToUnicode(sym);
         auto candidates=ic->inputPanel().candidateList();
-        if(!event.isRelease()&&candidates&&!candidates->empty()){
+        bool hasCandidates=candidates&&!candidates->empty();
+        bool hasComp=hasCandidates||!currentPreedit_.empty();
+
+        // 3. 候选词交互（有候选词列表时）：
+        if(hasCandidates){
             int index=unicode>='1'&&unicode<='9'?int(unicode-'1'):-1;
             if(sym==FcitxKey_space)index=candidates->cursorIndex()<0?0:candidates->cursorIndex();
             if(index>=0&&index<candidates->size()){
-                candidates->candidate(index).select(ic);event.filterAndAccept();return;
+                candidates->candidate(index).select(ic);
+                consumedKeys_.insert(keycode);
+                event.filterAndAccept();
+                return;
             }
             if(sym==FcitxKey_equal||sym==FcitxKey_minus){
                 auto *pages=candidates->toPageable();
                 if(pages){if(sym==FcitxKey_equal)pages->next();else pages->prev();
-                    pagingKeys_.insert(keycode);
+                    consumedKeys_.insert(keycode);
                     ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);event.filterAndAccept();return;}
             }
             if(sym==FcitxKey_Down||sym==FcitxKey_Up){
                 auto *cursor=candidates->toCursorMovable();
                 if(cursor){if(sym==FcitxKey_Down)cursor->nextCandidate();else cursor->prevCandidate();
+                    consumedKeys_.insert(keycode);
                     ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);event.filterAndAccept();return;}
             }
         }
+
+        // 4. 空闲状态保护门禁：
+        // 当输入法处于空闲状态（无预编辑拼音且无候选词）时，编辑与光标导航键必须直接原生放行给应用，
+        // 绝不走跨进程 Wine RPC。从根本上杜绝空闲退格时因跨进程超时或状态不一致导致的狂删与卡死。
+        if(!hasComp){
+            switch(sym){
+            case FcitxKey_BackSpace:
+            case FcitxKey_Delete:
+            case FcitxKey_Return:
+            case FcitxKey_KP_Enter:
+            case FcitxKey_Tab:
+            case FcitxKey_Escape:
+            case FcitxKey_Left:
+            case FcitxKey_Right:
+            case FcitxKey_Up:
+            case FcitxKey_Down:
+            case FcitxKey_Home:
+            case FcitxKey_End:
+            case FcitxKey_Page_Up:
+            case FcitxKey_Page_Down:
+                consumedKeys_.erase(keycode);
+                return;
+            default:
+                break;
+            }
+        }
+
+        // 5. 将常规按键转为 vk 发送给 Wine 引擎：
+        unsigned vk=symToVk(sym,event.rawKey());
+        if(!vk){
+            consumedKeys_.erase(keycode);
+            return;
+        }
+
+        if(transact(ic,"K "+std::to_string(vk)+" 0")){
+            consumedKeys_.insert(keycode);
+            event.filterAndAccept();
+        }else{
+            consumedKeys_.erase(keycode);
+        }
+    }
+private:
+    friend class Word;
+    static unsigned symToVk(fcitx::KeySym sym,const fcitx::Key &rawKey){
+        auto unicode=fcitx::Key::keySymToUnicode(sym);
         unsigned vk=0;
         if(unicode>='a'&&unicode<='z')vk=unicode-'a'+'A';
         else if((unicode>='A'&&unicode<='Z')||(unicode>='0'&&unicode<='9')||unicode==' ')vk=unicode;
@@ -175,36 +240,36 @@ public:
         case FcitxKey_percent:vk='5';break;case FcitxKey_asciicircum:vk='6';break;
         case FcitxKey_ampersand:vk='7';break;case FcitxKey_asterisk:vk='8';break;
         case FcitxKey_parenleft:vk='9';break;case FcitxKey_parenright:vk='0';break;
-        default:return;
+        default:return 0;
         }
-        if(event.rawKey().states().test(fcitx::KeyState::Shift))vk|=0x1000;
-        if(event.rawKey().states().test(fcitx::KeyState::CapsLock))vk|=0x2000;
-        if(sym==FcitxKey_Caps_Lock&&!event.isRelease())vk^=0x2000;
-        if(transact(ic,"K "+std::to_string(vk)+" "+(event.isRelease()?"1":"0")))event.filterAndAccept();
+        if(rawKey.states().test(fcitx::KeyState::Shift))vk|=0x1000;
+        if(rawKey.states().test(fcitx::KeyState::CapsLock))vk|=0x2000;
+        if(sym==FcitxKey_Caps_Lock&&!rawKey.states().test(fcitx::KeyState::CapsLock))vk^=0x2000;
+        return vk;
     }
-private:
-    friend class Word;
     static bool sensitive(fcitx::InputContext *ic){return !ic||ic->capabilityFlags().testAny(fcitx::CapabilityFlag::PasswordOrSensitive);}
-    void clear(fcitx::InputContext *ic){generation_++;ic->inputPanel().reset();ic->updatePreedit();ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);}
+    void clear(fcitx::InputContext *ic){
+        generation_++;
+        currentPreedit_.clear();
+        consumedKeys_.clear();
+        ic->inputPanel().reset();
+        ic->updatePreedit();
+        ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
+    }
     bool transact(fcitx::InputContext *ic,const std::string &command){
         try{
             auto reply=request(command);generation_++;
+            currentPreedit_=reply.preedit;
             auto &panel=ic->inputPanel();panel.reset();
             if(!reply.commit.empty()&&ic->hasFocus())ic->commitString(reply.commit);
             fcitx::Text preedit(reply.preedit,fcitx::TextFormatFlags(fcitx::TextFormatFlag::Underline)|fcitx::TextFormatFlag::DontCommit);
             preedit.setCursor(std::max(0,std::min(reply.cursor,int(reply.preedit.size()))));
             panel.setClientPreedit(preedit);
-            // 单行紧凑候选栏（对齐官方）：客户端支持内联预编辑时，拼音由客户端在光标处
-            // 显示，面板只画候选行；不支持时回退到面板预编辑行（fcitx5 内核对
-            // CapabilityFlag::Preedit 一票否决，无自动回退，见 inputcontext.cpp）。
             if(!ic->capabilityFlags().test(fcitx::CapabilityFlag::Preedit))
                 panel.setPreedit(preedit);
             if(!reply.candidates.empty()){
                 auto list=std::make_unique<fcitx::CommonCandidateList>();list->setPageSize(9);
                 list->setLabels({"1","2","3","4","5","6","7","8","9"});
-                // 不设定 layoutHint：交给 Fcitx 全局设置决定横向/纵向
-                //（fcitx5-configtool → 附加组件 → 经典界面 → 「纵向候选词列表」）。
-                // 原实现硬编码 Vertical，会无视用户全局配置。
                 list->setCursorPositionAfterPaging(fcitx::CursorPositionAfterPaging::ResetToFirst);
                 for(size_t i=0;i<reply.candidates.size();i++)list->append(std::make_unique<Word>(this,int(i),generation_,reply.candidates[i]));
                 list->setGlobalCursorIndex(std::max(0,std::min(reply.selected,int(reply.candidates.size())-1)));
@@ -223,7 +288,8 @@ private:
     fcitx::ScopedConnection settingsConnection_;
     fcitx::TrackableObjectReference<fcitx::InputContext> target_;
     unsigned generation_=0;
-    std::unordered_set<unsigned> pagingKeys_;
+    std::unordered_set<unsigned> consumedKeys_;
+    std::string currentPreedit_;
 };
 void Word::select(fcitx::InputContext *ic)const{engine_->choose(ic,index_,generation_);}
 class Factory:public fcitx::AddonFactory{public:fcitx::AddonInstance *create(fcitx::AddonManager *m)override{return new Engine(m->instance());}};
