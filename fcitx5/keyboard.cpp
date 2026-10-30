@@ -125,8 +125,10 @@ public:
             if(consumedKeys_.erase(keycode)){
                 event.filterAndAccept();
                 auto sym=event.rawKey().sym();
-                unsigned vk=symToVk(sym,event.rawKey());
-                if(vk){try{request("K "+std::to_string(vk)+" 1");}catch(...){}}
+                if(sym==FcitxKey_Shift_L||sym==FcitxKey_Shift_R||sym==FcitxKey_Caps_Lock){
+                    unsigned vk=symToVk(sym,event.rawKey());
+                    if(vk){try{request("K "+std::to_string(vk)+" 1");}catch(...){}}
+                }
                 return;
             }
             // 若此按键此前未被消费（已放行给应用），则 Release 必须原样放行给应用
