@@ -47,6 +47,30 @@ def stop(*args):
     running=False
 signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
 bound=False
+CUSTOM_PHRASE_PATH = Path.home() / '.config/doubao-ime/custom_phrase.txt'
+DEFAULT_PHRASES = {
+    'tuoyaruou': '脱亚入欧',
+    'tyro': '脱亚入欧',
+    'tuyarugou': '涂鸦入钩',
+}
+
+def load_phrases():
+    phrases = dict(DEFAULT_PHRASES)
+    if CUSTOM_PHRASE_PATH.is_file():
+        try:
+            for line in CUSTOM_PHRASE_PATH.read_text(encoding='utf-8').splitlines():
+                line = line.strip()
+                if not line or line.startswith('#'): continue
+                parts = line.split(maxsplit=1)
+                if len(parts) == 2:
+                    py = parts[0].replace("'", "").replace(" ", "").lower()
+                    phrases[py] = parts[1].strip()
+        except Exception:
+            pass
+    return phrases
+
+current_injected_phrase = None
+
 try:
     if not response(30).get('ready'):raise RuntimeError('Keyboard not ready')
     if sock_path.exists():
@@ -76,7 +100,38 @@ try:
                 continue
             import re
             if not re.fullmatch(r'(F|R|K (?:[0-9]{1,5}) [01]|S (?:[0-9]{1,2}))',text):continue
-            payload=transact(text)
+            if text == 'F' or text == 'R':
+                current_injected_phrase = None
+                payload = transact(text)
+            elif text.startswith('S '):
+                idx = int(text.split()[1])
+                if current_injected_phrase is not None:
+                    if idx == 0:
+                        chosen = current_injected_phrase
+                        current_injected_phrase = None
+                        transact('R')
+                        payload = {'result': 0, 'cursor': 0, 'selected': 0, 'has_prev': 0, 'has_next': 0,
+                                   'preedit': '', 'candidates': '', 'commit': chosen}
+                    else:
+                        current_injected_phrase = None
+                        payload = transact(f'S {idx - 1}')
+                else:
+                    payload = transact(text)
+            else:
+                payload = transact(text)
+                preedit_norm = payload.get('preedit', '').replace("'", "").replace(" ", "").lower()
+                phrases = load_phrases()
+                if preedit_norm in phrases:
+                    phrase = phrases[preedit_norm]
+                    cands = payload.get('candidates', '')
+                    cand_list = [c for c in cands.split('\n') if c]
+                    if phrase in cand_list:
+                        cand_list.remove(phrase)
+                    cand_list.insert(0, phrase)
+                    payload['candidates'] = '\n'.join(cand_list) + '\n'
+                    current_injected_phrase = phrase
+                else:
+                    current_injected_phrase = None
             try:client.sendall((json.dumps(payload,ensure_ascii=False)+'\n').encode())
             except (BrokenPipeError,ConnectionResetError):
                 # A timed-out frontend must never receive a stale commit later.
